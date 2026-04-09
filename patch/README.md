@@ -4,17 +4,17 @@ This directory holds SQL files used during the anonymization run.
 
 ## pre_drop_fdw.sql — you provide, tool executes
 
-Place a file named `pre_drop_fdw.sql` under `patch/<temp-rds-hostname>/`:
+Place your file at:
 
 ```
-patch/<temp-rds-hostname>/pre_drop_fdw.sql
+patch/_default/pre_drop_fdw.sql
 ```
 
-The tool executes this on the temp RDS **before anonymization** to drop all FDW/dblink connections back to PROD.
+The tool executes this on the temp RDS **before anonymization** to drop all FDW/dblink connections back to PROD. The temp RDS hostname is generated at runtime, so you cannot know it in advance — put the file in `_default/` and the tool copies it automatically.
 
-If no host-specific file exists, the tool falls back to `patch/_default/pre_drop_fdw.sql` and copies it into the host-specific folder.
+If you run pg-snap-anon against multiple PROD instances that need different teardown SQL, you can place a host-specific override at `patch/<temp-rds-hostname>/pre_drop_fdw.sql`. The tool checks for a host-specific file first and only falls back to `_default/` if none is found.
 
-See `patch/_default/pre_drop_fdw.sql` for a template, and `patch/example-temp-rds-hostname/pre_drop_fdw.sql` for an example.
+See `patch/_default/pre_drop_fdw.sql` for a template, and `patch/example-temp-rds-hostname/pre_drop_fdw.sql` for a host-specific override example.
 
 ## post_restore_fdw.sql — tool generates, you run manually
 
