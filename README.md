@@ -143,34 +143,6 @@ Fill in placeholders and run on your stage RDS to reconnect FDW.
 
 ---
 
-## Limitations
-
-The tool anonymizes data via in-place `UPDATE` — it never deletes or inserts rows.
-
-**Handled automatically:**
-
-| Object | Detail |
-|--------|--------|
-| Primary keys | Used to identify rows, never modified |
-| Sequences | No INSERT/DELETE so sequences are untouched |
-| Foreign keys | UPDATE in-place doesn't violate FK constraints |
-| UNIQUE constraints | Pre-loads existing values, retries until unique, UUID suffix fallback |
-| NOT NULL constraints | Faker always returns a non-null value |
-| Indexes on anonymized columns | PostgreSQL auto-maintains indexes on UPDATE |
-
-**Not handled — check before running:**
-
-| Object | Risk |
-|--------|------|
-| CHECK constraints | UPDATE will fail if Faker value doesn't satisfy the constraint |
-| Triggers on UPDATE | Will fire — may write to audit tables or call external systems |
-| Generated columns | Cannot be updated directly — will crash if declared in `pii_config.yaml` |
-| Row-level security (RLS) | Rows hidden by RLS policies will be silently skipped |
-
-See [docs/limitations.md](docs/limitations.md) for diagnostic SQL queries to detect these before running.
-
----
-
 ## Required AWS IAM permissions
 
 ```json
@@ -257,3 +229,65 @@ Only columns listed here are anonymized. Everything else is untouched.
 | `fake.credit_card_number()` | Credit card number |
 | `fake.ssn()` | Social security number |
 | `fake.sha256()` | SHA256 hash |
+
+---
+
+## Future improvements
+
+- **`--snapshot-id` flag** — pass a specific snapshot ID to `run` instead of always using the latest automated snapshot; enables coordinated manual snapshots across multiple databases for consistency
+- **Parallel table anonymization** — tables are processed serially; a connection pool with threading could significantly cut runtime for large databases with many independent tables
+- **Dry-run mode** — `--dry-run` flag on `run` that validates schema and prints what would be anonymized without writing any changes
+- **CHECK constraint detection in `validate`** — warn if any declared PII column has a CHECK constraint that Faker output may violate
+- **Trigger detection in `validate`** — warn if any declared PII table has UPDATE triggers that will fire during anonymization
+- **Progress streaming to audit log** — currently progress is printed to stdout only; nothing is streamed to the S3 audit log until a table completes
+- **Consistent snapshot automation** — EventBridge + Lambda to trigger coordinated snapshots of multiple databases simultaneously before running anonymization
+
+---
+
+## Limitations
+
+The tool anonymizes data via in-place `UPDATE` — it never deletes or inserts rows.
+
+**Handled automatically:**
+
+| Object | Detail |
+|--------|--------|
+| Primary keys | Used to identify rows, never modified |
+| Sequences | No INSERT/DELETE so sequences are untouched |
+| Foreign keys | UPDATE in-place doesn't violate FK constraints |
+| UNIQUE constraints | Pre-loads existing values, retries until unique, UUID suffix fallback |
+| NOT NULL constraints | Faker always returns a non-null value |
+| Indexes on anonymized columns | PostgreSQL auto-maintains indexes on UPDATE |
+
+**Not handled — check before running:**
+
+| Object | Risk |
+|--------|------|
+| CHECK constraints | UPDATE will fail if Faker value doesn't satisfy the constraint |
+| Triggers on UPDATE | Will fire — may write to audit tables or call external systems |
+| Generated columns | Cannot be updated directly — will crash if declared in `pii_config.yaml` |
+| Row-level security (RLS) | Rows hidden by RLS policies will be silently skipped |
+
+Run these queries to check before anonymizing:
+
+```sql
+-- CHECK constraints
+SELECT tc.table_name, tc.constraint_name, cc.check_clause
+FROM information_schema.table_constraints tc
+JOIN information_schema.check_constraints cc
+  ON tc.constraint_name = cc.constraint_name
+WHERE tc.constraint_type = 'CHECK' AND tc.table_schema = 'public';
+
+-- UPDATE triggers
+SELECT trigger_name, event_object_table, action_timing
+FROM information_schema.triggers
+WHERE trigger_schema = 'public' AND event_manipulation = 'UPDATE';
+
+-- Generated columns
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = 'public' AND is_generated = 'ALWAYS';
+
+-- Row-level security policies
+SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public';
+```
