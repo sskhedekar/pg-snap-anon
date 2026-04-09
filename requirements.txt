@@ -1,0 +1,14 @@
+# AWS SDK — RDS, S3, Secrets Manager
+boto3>=1.34
+
+# PostgreSQL driver
+psycopg2-binary>=2.9
+
+# PII replacement data generation
+faker>=24.0
+
+# pii_config.yaml parsing
+pyyaml>=6.0
+
+# CLI commands and prompts
+click>=8.1

@@ -1,0 +1,30 @@
+{
+  "faker": {
+    "options": ["en_US"],
+    "email": {
+      "domain": "fake-test.invalid"
+    }
+  },
+  "columns": {
+    "email": "fake.email()",
+    "username": "fake.user_name()",
+    "full_name": "fake.name()",
+    "phone_number": "fake.phone_number()",
+    "company_name": "fake.company()",
+    "billing_name": "fake.name()",
+    "job_title": "fake.job()",
+    "billing_address_street": "fake.street_address()",
+    "billing_address_city": "fake.city()",
+    "billing_address_state": "fake.state()",
+    "billing_address_zip": "fake.postcode()"
+  },
+  "json": {
+    "all_keys": [
+      {"email": "faker.email"},
+      {"username": "faker.user_name"},
+      {"full_name": "faker.name"},
+      {"phone_number": "faker.phone_number"},
+      {"company_name": "faker.company"}
+    ]
+  }
+}

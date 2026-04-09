@@ -1,0 +1,19 @@
+# Credentials & secrets
+.env
+*.pem
+pii_config.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+
+# OS
+.DS_Store
+
+# Logs & runtime state
+*.log
+patch/*/post_restore_fdw.sql
