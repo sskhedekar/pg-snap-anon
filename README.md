@@ -184,6 +184,8 @@ s3://<bucket>/pg-snap-anon/
 
 ## pii_config.yaml format
 
+This file declares which columns contain PII and what Faker rule to use to replace each one. It must be approved before `run` or `validate` will execute.
+
 ```yaml
 tables:
   users:
@@ -198,7 +200,16 @@ approved_by: "DBA Name"
 approved_date: "YYYY-MM-DD"
 ```
 
-Only columns listed here are anonymized. Everything else is untouched.
+- **`tables`** — map of `table_name → column_name → faker_rule`. Only `public` schema tables are supported.
+- **`approved`** — must be `true` or the tool will refuse to run. Set this after reviewing the declared columns.
+- **`approved_by`** — name of the person who reviewed and approved the PII scope.
+- **`approved_date`** — date of approval in `YYYY-MM-DD` format.
+
+Only columns listed here are anonymized. Every other column and table is untouched.
+
+Run `python3 pg_snap_anon.py configure` to generate this file interactively. After editing, run `python3 pg_snap_anon.py validate` to confirm every declared table and column exists in the schema and is type-compatible with its Faker rule.
+
+`pii_config.yaml` is gitignored — it stays local and is never committed.
 
 ---
 
