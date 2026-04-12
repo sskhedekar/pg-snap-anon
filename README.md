@@ -16,6 +16,51 @@ PROD is never connected to. Every step is checkpointed to S3 — if the run fail
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph CLOUD["☁️  AWS"]
+        direction LR
+
+        subgraph VPC["🔒  VPC"]
+            direction TB
+            subgraph BASTION["💻  EC2 Bastion"]
+                direction TB
+                SCRIPT(["⚙️ pg_snap_anon.py"])
+                PII[/"📋 pii_config.yaml"/]
+            end
+            TEMP[("🗄️ Temp RDS\n── restored copy ──\n drop FDW · anonymize")]
+        end
+
+        PROD[("🔴 PROD RDS\n── never touched ──")]
+        SNAP_IN(["📸 Source\nSnapshot"])
+        SNAP_OUT(["✅ Anonymized\nSnapshot"])
+        S3[("🪣 S3\ncheckpoints\naudit log")]
+        SM(["🔑 Secrets\nManager"])
+    end
+
+    PROD    -- "① auto-snapshot"    --> SNAP_IN
+    SNAP_IN -- "② restore"          --> TEMP
+    SM      -- "credentials"        --> SCRIPT
+    PII     -- "PII scope"          --> SCRIPT
+    SCRIPT  -- "③ drop FDW/dblink\n④ anonymize with Faker" --> TEMP
+    TEMP    -- "⑤ snapshot"         --> SNAP_OUT
+    SCRIPT  -- "⑥ delete"           --> TEMP
+    SCRIPT  -. "checkpoint\n+ ⑦ audit log" .-> S3
+
+    style PROD      fill:#ffcccc,stroke:#cc0000,stroke-width:2px,color:#000
+    style TEMP      fill:#fff3cd,stroke:#e6a817,stroke-width:2px,color:#000
+    style SNAP_IN   fill:#e2e8f0,stroke:#718096,stroke-width:1px,color:#000
+    style SNAP_OUT  fill:#c6f6d5,stroke:#276749,stroke-width:2px,color:#000
+    style SCRIPT    fill:#bee3f8,stroke:#2b6cb0,stroke-width:2px,color:#000
+    style PII       fill:#e9d8fd,stroke:#6b46c1,stroke-width:1px,color:#000
+    style S3        fill:#fed7aa,stroke:#c05621,stroke-width:2px,color:#000
+    style SM        fill:#e2e8f0,stroke:#718096,stroke-width:1px,color:#000
+```
+
+---
+
 ## Requirements
 
 - Python 3.8+
